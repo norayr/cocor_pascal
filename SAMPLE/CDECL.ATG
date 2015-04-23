@@ -1,0 +1,54 @@
+COMPILER Decl
+(* Translate simple C declarations into English
+   Based on Kernighan and Ritchie: "C Programming language", page 122
+   See also: Parr et.al. "PCCTS reference manual", page 53 in ACM SIGPLAN
+   Notices 27(2), 88-165, 1992 *)
+
+PROCEDURE GetNumber (VAR Int : INTEGER);
+  VAR
+    Error : INTEGER;
+    S : STRING;
+  BEGIN
+    LexString(S);
+    Int := 0; Val(S, Int, Error)
+  END;
+
+VAR
+  Name, Tipe : STRING;
+  Size : INTEGER;
+
+CHARACTERS
+  digit =  "0123456789" .
+  letter = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyx_" .
+
+IGNORE CHR(1) .. CHR(31)
+
+TOKENS
+  number = digit { digit } .
+  name = letter { letter } .
+
+PRODUCTIONS
+
+  Decl = { name                               (. LexName(Tipe) .)
+           Dcl                                (. WriteLn(' ', Tipe) .)
+           ";" } .
+
+  Dcl =     "*" Dcl                           (. Write(' pointer to') .)
+           | DirectDcl .
+
+  DirectDcl =   name                          (. LexName(Name);
+                                                 Write(' ', Name, ' is') .)
+                Descriptor
+              | "(" Dcl ")" Descriptor .
+
+  Descriptor = [  "["                         (. Write(' array ') .)
+                  ( number                    (. GetNumber(Size);
+                                                Write('[', Size, '] ') .)
+                    | (* no dimension *)
+                  )
+                  "]"                         (. Write('of') .)
+                  Descriptor
+                | "(" ")"                     (. Write(' function returning') .)
+               ] .
+
+END Decl.

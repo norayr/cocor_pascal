@@ -1,0 +1,11 @@
+(* we start in cell A1 *)
+1 RIGHT               (* enter 1 in cell A1 and then move on to cell A2 *)
+99 RIGHT              (* enter 99 in cell A2 and then move on to cell A3 *)
+(A1 + A2) / 2  ENTER  (* cell A3 now contains the average of A1 and A2 *)
+DOWN LEFT LEFT        (* move to cell B1 *)
+2 * A1                (* cell B1 now contains twice the value of A1 *)
+UP                    (* move back to cell A1 *)
+5                     (* alter the expression in A1 - cells A3 and B1 are affected too *)
+GOTO B3               (* move to cell B3 *)
+A3 % 3 ENTER          (* B3 now contains the remainder when A3 is divided by 3 *)
+QUIT

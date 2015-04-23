@@ -1,0 +1,18 @@
+   EBNF = { Production } .
+
+   Production = nonterminal "=" Expression "." .
+
+   Expression = Term { "|" Term } .
+
+   Term = Factor { Factor } .
+
+   Factor = nonterminal
+            | terminal
+            | "[" Expression "]"
+            | "(" Expression ")"
+            | "{" Expression "}" .
+
+    nonterminal = letter {letter | lowline | digit} .
+
+    terminal =  "'" noquote1 {noquote1} "'" | '"' noquote2 {noquote2} '"' .
+

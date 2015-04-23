@@ -1,0 +1,53 @@
+COMPILER EBNF
+USES CrossRef;
+(*
+  -- Attribute grammar for simple EBNF cross reference generator
+  -- P.D. Terry, Rhodes University, January 1992
+*)
+
+CONST
+  applied = FALSE;
+  defined = TRUE;
+VAR
+  Name : STRING;
+
+CHARACTERS
+  letter = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".
+  lowline  = "_".
+  digit = "0123456789".
+  noquote1 = ANY - "'".
+  noquote2 = ANY - '"'.
+
+IGNORE  CHR(9) .. CHR(13)
+
+COMMENTS FROM "(*" TO "*)"  NESTED
+
+TOKENS
+
+  nonterminal = letter {letter | lowline | digit} .
+  terminal =  "'" noquote1 {noquote1} "'" | '"' noquote2 {noquote2} '"' .
+
+PRODUCTIONS
+
+   EBNF =                   (.Create(Table).)
+     { Production } EOF .
+
+   Production  =
+     SYNC nonterminal        (.EBNFS.GetName(EBNFS.pos, EBNFS.len, Name);
+                               Add(Table, Name, EBNFS.line, defined).)
+
+     WEAK "=" Expression SYNC "." .
+
+   Expression = Term { WEAK "|" Term } .
+
+   Term = Factor { Factor } .
+
+   Factor =
+            nonterminal     (.EBNFS.GetName(EBNFS.pos, EBNFS.len, Name);
+                              Add(Table, Name, EBNFS.line, applied).)
+          | terminal
+          | "[" Expression "]"
+          | "(" Expression ")"
+          | "{" Expression "}" .
+
+END EBNF.

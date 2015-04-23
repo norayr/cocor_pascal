@@ -1,0 +1,315 @@
+Change History since version 1.21
+=================================
+
+Version 1.22 - internal, not released
+
+Version 1.23 - Sun  05-31-1992
+
+-   Updated and corrected documentation.
+-   Scanner now returns "sym" of CARDINAL not INTEGER type.
+-   Frame files modified to handle this change.
+-   CRP.MOD and CRS.DEF and CRS.MOD modified to handle this change.
+-   CRX.GenCond modified to handle small sets more safely.
+-   CRS.NextCh in scanner now translates CHR(26) to CHR(0) so that DOS
+    editors that append CHR(26) to text files will not cause problems.
+-   Modified CHARACTERS definition on CR.ATG to allow only printable
+    characters in strings (in particularly preventing strings from extending
+    over more than one line).
+-   Corrected errors in FileIO.WriteText in all four versions.
+-   Corrected bug in CRA.ImportSymConsts that was generating too long a name
+    for the generated Symbolic constants file.
+-   Improved CRL.PrintErr to remove redundant parameter.
+-   Fixed CRL.GetLine to ensure that CHR(26) was treated properly.
+
+Version 1.24 - Mon  06-15-1992
+
+-  Changed the $C pragma to $N (Names).  C had no mnemonic content!
+-  Updated and corrected documentation.
+-  Modified parser generation to avoid exporting symSetSize from the
+   definition module.
+-  Modified scanner yet again to convert CHR(26) to CHR(0) whenever found
+   (thus avoiding problems caused by DOS editors that add CTRL-Z to the ends
+   of text files more systematically).
+-  Added pragma/command line option to allow suppression of definition module
+   generation (recreating these each time means all clients have to be
+   recompiled every time, which is tedious).
+-  Added pragma/command line option to allow optional creation of a complete
+   driver program (using frame file COMPILER.FRM) which incorporates a list
+   handler with interleaved error messages.  A simple COMPILER.FRM is supplied
+   that is "generic", but needs to be adapted for most applications.  Special
+   tuned cases of COMPILER.FRM are provided for the sample grammars in the
+   kit.
+-  Modified the output directed to file <Grammar>E.TXT slightly.
+-  Rearranged CRT.DEF and CRT.MOD to eliminate a superfluous procedure
+   (PrintSet no longer exported, PrintSetTerminal eliminated).
+-  Rearranged order of generation of def and imp mods for scanner and parser,
+   and made minor changes to SCANNER.FRM and PARSER.FRM.
+-  Moved export of "directory" and "lst" to scanner module CRS.DEF, and
+   eliminated CRL.DEF and CRL.MOD.  The list handling is now handled in
+   CR.MOD.
+-  Various minor changes to CR.MOD made to reflect all these changes in the
+   help screen, etc.
+
+Version 1.25 - Sat  06-20-1992
+
+- Minor bug in COMPILER.FRM files repaired
+
+Version 1.26 - Wed  08-26-1992
+
+- Rearranged COMPILER.FRM files to incorporate error/list handler as
+  internal module.
+- Replaced curious WriteText call in error/list handler with WriteString.
+- Repaired bug in CRT.MOD to handle generation of names for terminals with
+  single quotes   (Thanks to Tim Channon for pointing this one out!).
+
+Version 1.27 - Tue  10-06-1992
+
+- Extended length of name field in CRT.DEF to 40 chars.
+- resultant small changes in output format in CRT.
+- fixed bug in symbolic name generation for terminals with non-letters in
+  them.
+- suppressed generation of GrammarG.DEF along with other DEF mods when
+  suppression requested.
+- allowed COMPILER.FRM to default first to GRAMMAR.FRM in grammar directory
+  (Thanks to Tim Channon for suggestion).
+- fixed silly error in SCANNER.FRM that cause errors on first line to be
+  reported in the wrong places.
+- improved COMPILER.FRM files to treat tabs as spaces in error listing and
+  thereby line up error messages more accurately (still needs improving).
+
+Version 1.28 - Fri  04-30-1993
+
+- Fixed bug in Term that resulted in program looping if alternatives in
+  productions also involved unrecognisable tokens (Thanks to John Gough
+  for discovering the bug).
+
+Version 1.29 - Tue  07-13-1993
+
+- Fixed various places where BITSET was omitted in front of default {} set
+  constructors - this will be needed in some implementations.
+- Changed WriteInt(f,x,0) calls to WriteInt(f,x,1) calls in various places
+  (New standard requires ,0 to generate exactly one leading space).
+
+Version 1.30 - Sat  08-07-1993
+
+- Fixed bug that regarded two terminals like 'hello' and "hello" to be
+  regarded as distinct (Thanks to Stuart van Onselen for spotting this one).
+  Terminals typed as 'singlequoted' are now converted internally to
+  "doublequoted" (except, obviously, where a double quote appears within
+  'single"quoted"strings').
+
+Version 1.31 - Sat  08-21-1993
+
+- Various nasties.  Thanks to John Gough who pointed out an abuse of CRT.Set
+  in CRA.DeleteRedundantStates.  In chasing this and testing on grammars that
+  yield large numbers of states, various other problems came to light.  Moved
+  the symbol table to the heap (CRT) and extended various limitations.
+  CRA.GetstateSet was rewritten to conform to the Oberon Sources I have, and
+  this seems to clear a nasty problem in melting states.  A lurking bug in
+  MakeUnique has not yet been fully tracked.  Compiler restriction messages
+  and CRX.WriteStatistics improved and extended.  Thus CRA, CRX and CRT have
+  all been changed.
+
+  Considering change to FileIO to replace "con" with StdIn and StdOut.
+
+Version 1.32 - Sat  09-04-1993
+
+- Major overhaul of CRA and CRS following debugging exercise by Hanspeter
+  Moessenboeck in Zurich.  Hopefully this has cleared the automaton problems.
+  His Oberon changes were adapted for the Modula-2 version, needing
+  slight changes.  Also fixed potential problem in SCANNER.FRM to prevent
+  garbage being produced on attempts to read past the end of the source buffer.
+
+Version 1.33 - Tue  12-14-1993
+
+- Further bug fixes in CRA following fixes by Hanspeter Moessenboeck.
+- Minor adjustments to sources to incorporate place holders for changes needed
+  to port to Gardens Point Modula-2 versions.
+- Gardens Point versions of FileIO and Strings added to kit (see directory
+  SOURCES\GPM; thanks to John Gough of the Queensland University of Technology
+  for making these available).
+- Shareware versions first made available on ftp servers world wide.  These
+  include the MS-DOS kit and the complete Gardens Point Modula kit for UNIX
+  implementations.
+
+Version 1.34 - Tue  01-11-1994
+
+- More corrections to CRA to handle (disallow) tokens starting with an
+  iteration.
+
+Version 1.35 - Thu  05-19-1994
+
+- Corrections to CRX.MOD to fix bug reported by Frankie Arzu.
+- Alterations to frame files, and to CRA.MOD and CRS.MOD to allow Coco/R
+  to handle input files with line breaks in any of MS-DOS, Unix, or MAC
+  formats.  Note that the output is generated in the "local" format.
+- Added simple CONVERT utility to be able to convert text files from one of
+  these forms to any other.
+- Took advantage of opportunity to improve formatting of generated parser.
+
+Version 1.36 - Thu  06-02-1994
+
+- Corrections to CRA.MOD to allow for proper handling of CONTEXT clauses.
+- Improved portability in the generated scanners still further.
+- Alternative scanner frame provided for small source programs.
+
+Version 1.37 - Thu  07-07-1994
+
+- Fixed FileIO.MOD to allow widths of 0 to behave as specified (ie to give
+  a leading space.
+
+Version 1.38 - Thu  04-27-1995
+
+- Fixed CRX.MOD to handle problem with Logitech implementation of file
+  closing.
+- Changed COMPILER.FRM (and other frame files) to allow better handling of
+  tabs within source ATG files.
+
+Version 1.39 - Tue  10-03-95
+
+- Fixed command line use to allow
+         COCOR [-options] Grammar
+  as alternative to
+         COCOR Grammar /Options
+  so as to match Un*x usage.
+- Tokens that have spaces within them are detected and reported.
+- Changed output of FORWARD declaration suppression.
+- Added a CRQ.FRM file to the MS-DOS kit to allow generation of a version that
+  writes error messages in "FileName (Line, Col)" format for use with editors
+  that can interface to such messages.
+- Removed a SET OF CHAR that had crept in and which is non-portable to some
+  older compilers.
+- Redefined FileIO.def to act as a single interface to as many non-portable
+  or awkward features as possible, including the interface to minimal set
+  of Strings routines.
+- Added StdIn and StdOut to exports from FileIO to allow for proper handling
+  of redirected I/O.
+- FST, JPI, StonyBrook Logitech and GPM-PC implementations of FileIO
+  completely overhauled.  Implementations added for Mocka Linux and BSD.
+  Implementations overhauled for Gardens Point implementations (tested
+  on Linux and Mocka versions of Gardens Point only).
+- Implementation added for generating Turbo Pascal (thanks to Volker Pohlers)
+- A great many other small changes to sources to enhance portability.
+- Suppressed timing output.
+- Added several more example grammars.
+- Fixed bug in Mod2.atg and PimMod.atg.
+
+Version 1.40 - Mon  06-10-96
+
+- Added LexName, LexString, LookAheadName, LookAheadString to Parser module
+  for easier extraction of current lexeme.
+- Added Successful to Parser for easier assesment after parsing is complete.
+- Added SynError and SemError procedures to interface of Parser module, so
+  that they can easily be called from the semantic routines provided in the
+  ATG file.  Semantic errors with are reported at the current, rather than the
+  lookahead symbol position.  Users must choose error numbers greater than any
+  generated automatically bu Coco/R.  Start them high (>=1000 say)
+  This meant a small change to the
+  CRX and CRC modules, and some minor changes to the frame files.
+- Various minor bug fixes.
+- Many thanks to Frankie Arzu, whose work on the C++ version inspired many of
+  these changes.
+
+Version 1.41 - 08-16-96
+
+- Fixed minor bug in comment generation
+
+Version 1.42 - Tue  10-28-97
+
+- Prevent grammars from specifying IGNORE CHR(0)
+- Documentation updated to conform more closely to that found in my textbook
+  "Compilers and Compiler Generators - an introduction with C++" which uses
+  Coco/R extensively (published by International Thomson; ISBN 1 85032 298 8).
+  Although the text's examples are mainly in C++ (not much else, other than
+  Java, sells books these days) the source code on an accompanying diskette
+  has equivalent Modula-2, Pascal and C++ for every example.  This code is
+  available for ftp from cs.ru.ac.za:pub/languages/textbook
+- Minor changes made to compiler frame files (Pascal versions only) to
+  eliminate stray NUL characters in the .LST files (Thanks to Kenneth Stout
+  for pointing this out).
+- Fixed bug relating to closure formation when finding FIRST and FOLLOW sets
+  (Thanks to Kenneth Stout for detecting this, and to Hanspeter Moessenbock
+  for fixing it *)
+
+Version 1.43 - Monday  05-18-98
+
+- Minor cosmetic changes to keep abreast of changes to Modula-2 version as
+  this was adapted to use ISO Modula-2.  Some redundant code excised
+- Errors now written to Grammar.ERR and not to GrammarE.TXT
+- Comments may now be written /* as in C */ as (* well as in Modula/Pascal *)
+- Underscores permitted in identifier names - use carefully!
+
+Version 1.44 - Tuesday  06-16-98
+
+- Minor cosmetic changes to adapt code to allow for greater consistency with
+  Java version; a few minor bugs fixed in comment handling.
+- Taste package slightly improved
+
+Version 1.45
+
+- Subtle bug in CRA module repaired thanks to Hanspeter Moessenboeck
+
+Version 1.46 Sun  08-23-98
+
+- Fixed bug in use of high ASCII characters in strings
+- Literal token strings of zero length no longer allowed
+
+Version 1.47 Wed  11-04-98
+
+- Eliminated allowing incomplete strings within attributes and actions
+- Minor improvements to documentation
+- Duplicate case label fixed in CRTABLE.PAS (non detection of this represents
+  a bad Turbo Pascal bug).  Thanks to Gale Paeper for finding it.
+
+Version 1.48 Fri  07-09-99
+
+- Attributes may now be demarcated by matching <. and .> or by < and >.  This
+  extension allows for the > character to appear in an actual parameter.
+- Omitting the closing .) in an action can lead to errors that are hard to
+  find, so the digraph (. appearing within a semantic action is now flagged as
+  an error (Thanks to Hans Ellenberger for this suggestion).
+
+Version 1.49 - Mon  11-15-99
+
+- Improved the scanner generator (LeftContext)
+- Changed hidden token names better to avoid name clashes
+- Added CHR('A') as an alternative to CHR(65) in CHARACTER specification
+- Frame files changed to correspond to these changes.
+
+Version 1.50 - Sat  03-11-00
+
+- Insistence that IGNORE CASE appear first if it appears at all.
+- Scanner generator changed yet again.  LeftContext as used in version
+  1.49 proved unsatisfactory.
+- Scanner frame files changed once more.
+- Minor changes to sources to allow compatability with the Free Pascal
+  compiler under Linux  (see http://www.freepascal.org).
+
+Version 1.51 - Tue  06-19-01
+
+- Minor bug fixed in scanner that caused trouble with tokens of the silly form
+     ttt = hhh [ { hhh } ] .
+
+Version 1.52 - Tue  07-09-02
+
+- Tweaked sizes of arrays in CRTABLE.PAS added error check in CRTABLE.PAS and
+  made minor mod to CRX.PAS to check for overflow of tables for too many
+  non-terminals. (The table sizes could and should be made larger for 32 bit
+  compilers.  The relationship between sizes is kludgy; the table really needs
+  to be overhauled completely).
+
+Version 1.53 - Tue  09-17-02
+
+- Minor bugs fixed in treatment of ALL for character sets, in DFA and in
+  CRTABLE.
+
+- removed a restriction on CONTEXT that seems to be immaterial.
+
+- added a TP Compiler directive to set a larger stack size
+
+- empty character sets are no longer permitted (if declared, it was possible to
+  define tokens on them that were meaningless!)
+
+- improved error messages
+
+=END=

@@ -1,0 +1,14 @@
+(* another fiendish session with the spreadsheet ! *)
+10 down 20 down 3+5 down -4 down 5 goto a2
+a1 * a1 down b1 * b1 down c1 * c1 down d1 * d1 down e1 * e1 goto a3
+a1 * a2 down b1 * b2 down c1 * c2 down d1 * d2 down e1 * e2 goto e5
+(e1 + e2) + e3 up
+(d1 + d2) + d3 up
+(c1 + c2) + c3 up
+(b1 + b2) + b3 up
+(a1 + a2) + a3 up
+goto f2 5 enter
+(a2 + b2 + c2 + d2 + e2) / (a1 + b1 + c1 + d1 + e1)
+home
+-10/3 enter (* which should change several cells when it is accepted *)
+quit

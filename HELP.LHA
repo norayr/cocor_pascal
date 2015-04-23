@@ -1,0 +1,8 @@
+       lha a file /rx
+
+will collect recursively into file.lzh
+
+       lha s name /rx
+
+turns it into a self extractor name.exe that works properly
+

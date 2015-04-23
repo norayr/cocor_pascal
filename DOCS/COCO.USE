@@ -1,0 +1,456 @@
+Quick start notes on the use of Coco/R (Turbo Pascal version)
+=============================================================
+
+                  Pat Terry, updated Sat  03-11-00
+                          p.terry@ru.ac.za
+
+These notes apply directly to the MS-Dos versions of Coco/R (Pascal).
+
+We know that you can't wait to begin!
+
+Installation
+============
+
+Please read the file README.1ST for details of how to install the system.
+
+If you wish to use Coco/R for Pascal with Free Pascal you will have to
+compile the sources yourself.  This should cause no proble, provided you are
+using a version of FreePascal >= 0.99.14
+
+Getting going
+=============
+
+Examples of input for Coco/R can be found in the case study source files on
+this diskette.  It is suggested that you experiment with these before
+developing your own applications.
+
+For each application, the user has to prepare a text file to contain the
+attributed grammar.  Points to be aware of are that
+
+ - it is sensible to work within a "project directory" (say C:\WORK) and not
+   within the "system directory" (C:\COCO);
+
+ - text file preparation must be done with an ASCII editor, and not with a
+   word processor;
+
+ - by convention the file is named with a primary name that is based on the
+   grammar's goal symbol, and with an "ATG" extension, for example CALC.ATG.
+
+Running Coco/R
+==============
+
+To start Coco/R, type COCOR, adding the name of the file that contains your
+attribute grammar:
+
+          COCOR   TEST.ATG
+
+A second parameter can be supplied to set compiler options, for example:
+
+          COCOR   TEST.ATG   /CL
+
+or, if you prefer the Unix form
+
+          COCOR   -CL  TEST.ATG
+
+For those who need reminding, the command
+
+          COCOR /?
+
+will print a help screen something like the following, and then abort.
+
+     Coco/R (MS-DOS) - Compiler-Compiler V1.xx (Pascal)
+     Turbo Pascal (TM) version by Pat Terry/Volker Pohlers ReleaseDate
+     Usage: COCOR [-Options] [Grammar[.atg]] [-Options]
+     Example: COCOR -cs Test
+
+     Options are
+     a  - Trace automaton
+     c  - Generate compiler module
+     f  - Give Start and Follower sets
+     g  - Print top-down graph
+     i  - Trace start set computations
+     l  - Force listing
+     n  - Generate symbolic names
+     p  - Generate parser only
+     s  - Print symbol table
+     t  - Grammar tests only - no code generated
+     x  - Print cross reference list
+     COMPILER.FRM, SCANNER.FRM and PARSER.FRM must be in the working directory,
+     or on the path specified by the environment variable CRFRAMES
+
+
+Input to Coco/R
+===============
+
+Coco/R takes three (or four) files as input, and produces four (or six) files
+as output.  These output files can then be combined with a main program and
+any other auxiliary files needed, so as to produce a complete compiler.
+
+The input files needed are
+
+   grammar.ATG  -  an attributed grammar  (grammar used here for illustration)
+   PARSER.FRM   -  the frame file for the parser generation
+   SCANNER.FRM  -  the frame file for the scanner generation
+
+optionally
+
+   grammar.FRM  -  an application specific frame file for complete compiler
+                   generation
+
+A "generic" version of this last frame file is given as
+
+   COMPILER.FRM  -  the generic frame file for the compiler generation
+
+and this is intended to act as a model for your own applications, a process
+that will be helped by studying various application specific frame files
+supplied in the sources on this diskette.  The other frame files are
+effectively standardized and should require little if any alteration; they
+are fairly resilient, and any particular configuring for specific applications
+will require some experience of the internal workings of Coco/R itself.
+
+When using Coco/R, the frame files SCANNER.FRM and PARSER.FRM are first
+searched for in the directory of the input file and then, if they are not
+found, in the directories specified in the environment variable CRFRAMES.  To
+set this variable, use the DOS SET command, for example
+
+          SET CRFRAMES=C:\COCO\FRAMES
+
+You may like to add this line to your AUTOEXEC.BAT file, so that it takes
+effect every time you start your computer.
+
+The frame file for the compiler itself is named as grammar.FRM, where grammar
+is the grammar name.  This is searched for in the directory of the input file.
+If it is not found, a search is made for the generic COMPILER.FRM in this
+directory; failing that, COMPILER.FRM is searched for in the directories
+specified in the environment variable CRFRAMES.  The basic compiler frame file
+(COMPILER.FRM) that comes with the kit will allow simple applications to be
+generated immediately, but it is sensible to copy this basic file to the
+project directory, and then to rename and edit it to suit the application.
+
+Output from Coco/R
+==================
+
+The generated files are placed in the same directory as the grammar file.
+
+Coco/R for Pascal generates the files
+
+  grammarS.PAS         generated FSA scanner
+  grammarP.PAS         generated recursive descent parser
+  grammar.ERR          error numbers and corresponding message texts
+  grammar.LST          compilation history
+
+and, optionally, the files
+
+  grammarG.PAS         generated module exporting symbolic names that
+                       will be used if the $N pragma or /N option was in
+                       effect.
+  grammar.PAS          generated main module for the complete compiler
+
+where grammar is the name of the attributed grammar (this grammar is sensibly
+stored in the file grammar.ATG).
+
+The system should produce code acceptable to Turbo Pascal - hopefully any
+version from 4 onwards (it has only been tested on version 6).
+
+Getting going
+=============
+
+Examples of input for Coco/R can be found in the various subdirectories in
+this kit.  It is suggested that you experiment with these before developing
+your own applications.  Besides the grammar for Coco/R itself (which we
+recommend that you do not experiment with initially), there are two simple
+applications - one is a crossreference generator for EBNF productions, and the
+other is the "Taste" toy compiler described in Moessenboeck's report 127 from
+ETH (1990), modified minimally to convert it from Oberon to Modula-2.
+
+Compiling the generated compiler
+================================
+
+Once the components of the application have been generated, they are ready to
+be compiled by your Turbo Pascal compiler.  It is assumed that you are
+familiar with the process of compiling such programs.
+
+For a very simple MS-DOS application one might be able to use a command like
+
+          TPC /M CALC
+
+Coco/R options and pragmas
+==========================
+
+As implied above, various didactic output and useful variations may be invoked
+by the use of compiler pragmas in the input grammar, or by the use of a
+command line option.  Compiler pragmas take the form
+
+       $String
+
+and the optional command line parameter takes the form
+
+       /String   or    -String
+
+where String contains one or more of the letters ACFGLNPSTX in either upper
+or lower case.
+
+The C L N P and T options are generally useful
+
+C  - (Compiler) Generate complete compiler driving module, including source
+     listing featuring interleaved error message reporting.  To use this
+     option the file COMPILER.FRM (or grammar.FRM) must be available.
+
+L  - (Listing) Force listing.
+     Normally the listing of the grammar is suppressed if the compilation
+     is error free.
+
+N  - Generate symbolic names, and the module grammarG.PAS.
+     Normally the generated scanner and parser use numbers for the symbol
+     classes, but they can optionally use names (like BEGINSym, periodSym)
+     instead.
+
+P  - (Parser only)  Suppress generation of the scanner.
+     Regeneration of the scanner is often tedious, and results in no changes
+     from the one first generated.  This option must be used with care.  It
+     can also be used if a hand-crafted scanner is to be supplied (see the
+     notes on the use of hand-crafted scanners in the file COCOL).
+
+T  - (Tests) Suppress generation of scanner and parser.
+     If this option is exercised, the generation of the scanner and parser
+     is suppressed, but the attributed grammar is parsed and checked for
+     grammatical inconsistencies, LL(1) violations and so on.
+
+The following options are really intended to help with debugging/teaching
+applications.  Their effect may best be seen by judicious experimentation.
+
+A  - Trace automaton
+
+F  - Give First and Follow sets for each non-terminal in the grammar
+
+G  - Print top-down graph
+
+S  - Print symbol table
+
+X  - Print cross reference list
+
+Grammar checks
+==============
+
+Coco/R performs several tests to check if the grammar is well-formed.  If one 
+of the following error messages is produced, no compiler parts are generated.
+
+   NO PRODUCTION FOR X
+     The nonterminal X has been used, but there is no production for it.
+
+   X CANNOT BE REACHED
+     There is a production for nonterminal X, but X cannot be derived from the
+     start symbol.
+
+   X CANNOT BE DERIVED TO TERMINALS
+     For example, if there is a production X = "(" X ")" .
+
+   X - Y, Y - X
+     X and Y are nonterminals with circular derivations.
+
+   TOKENS X AND Y CANNOT BE DISTINGUISHED
+     The terminal symbols X and Y are declared to have the same structure,
+     e.g.
+
+       integer = digit { digit } .
+       real = digit { digit } ["." { digit } ].
+
+     In this example, a digit string appears ambiguously to be recognized as
+     an integer or as a real.
+
+
+The following messages are warnings.  They may indicate an error but they may
+also describe desired effects.  The generated compiler parts may still be
+valid.  If an LL(1) error is reported for a construct X, one must be aware
+that the generated parser will choose the first of several possible
+alternatives for X.
+
+X DELETABLE
+   X can be derived to the empty string, e.g. X = { Y } .
+
+LL(1) ERROR IN X:Y IS START OF MORE THAN ONE ALTERNATIVE
+   Several alternatives in the production of X start with the terminal Y
+   e.g.
+
+      Statement = ident ":=" Expression | ident [ ActualParameters ] .
+ 
+LL(1) ERROR IN X:Y IS START AND SUCCESSOR OF DELETABLE STRUCTURE
+   Deletable structures are [ ... ] and { ... }
+   e.g.
+
+      qualident = [ ident "." ] ident .
+      Statement = "IF" Expression "THEN" Statement [ "ELSE" Statement ] .
+
+   The ELSE at the start of the else part may also be a successor of a
+   statement.  This LL(1) conflict is known under the name "dangling else".
+
+The Parser Interface
+====================
+
+A parser generated by Coco/R for Pascal has the following simple interface:
+
+    UNIT grammarP;
+    (* Parser generated by Coco/R - Pascal version *)
+
+    INTERFACE
+
+    PROCEDURE Parse;
+    (* Parse the source *)
+
+    FUNCTION Successful : BOOLEAN;
+    (* Returns TRUE if no errors have been recorded while parsing *)
+
+    PROCEDURE SynError (errNo: INTEGER);
+    (* Report syntax error with specified errNo *)
+
+    PROCEDURE SemError (errNo: INTEGER);
+    (* Report semantic error with specified errNo *)
+
+    PROCEDURE LexString (VAR Lex : STRING);
+    (* Retrieves Lex as exact spelling of current token *)
+
+    PROCEDURE LexName (VAR Lex : STRING);
+    (* Retrieves Lex as name of current token (capitalized if IGNORE CASE) *)
+
+    PROCEDURE LookAheadString (VAR Lex : STRING);
+    (* Retrieves Lex as exact spelling of lookahead token *)
+
+    PROCEDURE LookAheadName (VAR Lex : STRING);
+    (* Retrieves Lex as name of lookahead token (capitalized if IGNORE CASE) *)
+
+
+The functionality provides for the parser to
+
+ - initiate the parse for the goal symbol by calling Parse.
+ - investigate whether the parse succeeded by calling Successful.
+ - report on the presence of syntactic and semantic errors by calling SynError
+   and SemError.
+ - obtain the lexeme value of a particular token in one of four ways
+   (LexString, LexName, LookAheadString and LookAheadName).  Calls to
+   LexString are most common; the others are used for special variations.
+
+A tailored frame file can be supplied, from which Coco/R can generate a main
+program if the $C pragma/option is used.  Examples of this can be found in the
+kit as well.
+
+The Scanner Interface
+=====================
+
+The scanner generated by Coco/R has the following interface:
+
+    UNIT grammarS;
+    (* Scanner generated by Coco/R (Pascal version) *)
+
+    INTERFACE
+
+    VAR
+      src:         FILE;         (* source/list files *)
+      lst:         TEXT;         (* to be opened by the main program *)
+      directory:   STRING;       (* of source file *)
+      line, col:   INTEGER;      (* line and column of current symbol *)
+      len:         INTEGER;      (* length of current symbol *)
+      pos:         LONGINT;      (* file position of current symbol *)
+      nextLine:    INTEGER;      (* line of lookahead symbol *)
+      nextCol:     INTEGER;      (* column of lookahead symbol *)
+      nextLen:     INTEGER;      (* length of lookahead symbol *)
+      nextPos:     LONGINT;      (* file position of lookahead symbol *)
+      errors:      INTEGER;      (* number of detected errors *)
+      Error:       PROCEDURE (nr, line, col: INTEGER; pos: LONGINT);
+
+    PROCEDURE Get (VAR sym: INTEGER);
+    (* Gets next symbol from source file *)
+
+    PROCEDURE GetString (pos: LONGINT; len: INTEGER; VAR s: STRING);
+    (* Retrieves exact string of max length len from position pos in source
+       file *)
+
+    PROCEDURE GetName (pos: LONGINT; len: INTEGER; VAR s: STRING);
+    (* Retrieves name of symbol of max length len from position pos in source
+       file.  Capitalized if IGNORE CASE was specified *)
+
+    FUNCTION CharAt (pos: LONGINT): CHAR;
+    (* Returns exact character at position pos in source file *)
+
+    PROCEDURE _Reset;
+    (* Reads and stores source file internally *)
+
+Notes
+-----
+
+It is rarely necessary to make use of any of this interface directly.  The
+parser interface discussed above exports most of the functionality that is
+required when actions are required to retrieve token information.
+
+The variables src, lst and directory are exported from this module simply for
+convenience.  src is assumed to be opened before parsing begins.
+
+The variables line, col, pos, len are apposite for the most recently parsed
+token.
+
+The variables nextLine, nextCol, nextPos, nextLen are apposite for the most
+recently scanned token (the look-ahead token retrieved by the most recent call
+to Get).
+
+PROCEDURE _Reset is called by the parser to initialize the scanner.  Note that
+the main module is responsible for opening the source file src prior to
+calling the parser.  _Reset reads the entire source into a large internal
+buffer, thus improving the efficiency of the scanner very markedly.
+
+PROCEDURE Get is called repeatedly from the parser, to get the next token from
+the source text.
+
+PROCEDURE CharAt can be used to retrieve a single character from the source
+text at a known position.
+
+PROCEDURE GetName can be used to obtain the text of the token at position pos
+with length len.  PROCEDURE GetString does the same thing, but returns the
+exact string as found in the source.  (GetName returns the string converted to
+uppercase if the scanner was generated so as to IGNORE CASE).
+
+Procedure variable Error is called by the parser for every syntax error
+detected, with an appropriate error number and an error position as
+parameters.  The user can install any procedure that prints a message, or that
+saves the error information for later output, subject to the restraint that
+after parsing is completed, variable  grammarS.errors  should contain a
+count of the total number of errors detected.
+
+Procedure variable Error can also be used to report semantic errors.  If you
+use it for this purpose, make sure that you use semantic error numbers that do
+not clash with automatically generated syntax error numbers (i.e. start
+semantic error numbers at a high number like 200.)
+
+The error numbers together with an explanatory text are written to a file
+grammar.ERR by Coco/R in the following form:
+
+           0: Msg("EOF expected")
+         | 1: Msg("ident expected")
+         | 2: Msg("string expected")
+         | 3: Msg("number expected")
+         ...
+
+This text can then be merged into a CASE statement within a procedure that
+prints textual error messages.  This is done automatically if the $C pragma
+(/C command line option) is used.
+
+Bootstrapping Coco
+==================
+
+The parser and scanner used by Coco/R were themselves generated by a bootstrap
+process; if Coco/R is given the grammar CR.atg as input, it will reproduce the
+files CRS.PAS and CRP.PAS and MOD.  It can also regenerate its own
+main program from the file SOURCES\CR.FRM and CR.ATG if the $C pragma is used.
+
+This means that Coco/R can be extended and corrected by changing its grammar
+and recompiling itself.  If you feel tempted to do this, please make sure that
+you have kept copies of the original system in case you destroy or corrupt the
+scanner and parser!
+
+The FileIO module is not required for Pascal scanners and parsers.  It will
+only be needed if you wish to modify or bootstrap Coco/R itself.
+
+Trademarks
+==========
+
+All trademarks are acknowledged.
+
+=END=

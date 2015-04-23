@@ -1,0 +1,488 @@
+$LSC (*ACFGILMOSX*)
+(* COCO/R for MS-DOS grammar used to generate COCO/R itself
+   as adapted by P.D. Terry, January 1992
+   version 1.50p last modified Mon  01-24-00
+
+   This is the special version for the TurboPascal compiler/compiler *)
+
+COMPILER CR
+USES CRTable, CRA, Sets;
+
+CONST
+  ident = 0; stringSym = 1;  (* symbol kind *)
+
+PROCEDURE FixString (VAR name: STRING; len: INTEGER);
+  VAR
+    double, spaces: BOOLEAN;
+    i: INTEGER;
+  BEGIN
+    IF len = 2 THEN BEGIN SemError(129); EXIT END;
+    IF CRTable.ignoreCase THEN (* force uppercase *)
+      FOR i := 2 TO len - 1 DO name[i] := UpCase(name[i]);
+    double := FALSE; spaces := FALSE;
+    FOR i := 2 TO len - 1 DO (* search for interior " or spaces *) BEGIN
+      IF name[i] = '"' THEN double := TRUE;
+      IF name[i] <= ' ' THEN spaces := TRUE;
+    END;
+    IF NOT double THEN (* force delimiters to be " quotes *) BEGIN
+      name[1] := '"'; name[len] := '"'
+    END;
+    IF spaces THEN SemError(124);
+  END;
+
+PROCEDURE MatchLiteral (sp: INTEGER);
+(* store string either as token or as literal *)
+  VAR
+    sn, sn1:  CRTable.SymbolNode;
+    matchedSp: INTEGER;
+  BEGIN
+    CRTable.GetSym(sp, sn);
+    CRA.MatchDFA(sn.name, sp, matchedSp);
+    IF matchedSp <> CRTable.noSym
+      THEN
+        BEGIN
+          CRTable.GetSym(matchedSp, sn1);
+          sn1.struct := CRTable.classLitToken;
+          CRTable.PutSym(matchedSp, sn1);
+          sn.struct := CRTable.litToken
+        END
+      ELSE sn.struct := CRTable.classToken;
+    CRTable.PutSym(sp, sn)
+  END;
+
+PROCEDURE SetCtx (gp: INTEGER);
+(* set transition code to CRTable.contextTrans *)
+  VAR
+    gn: CRTable.GraphNode;
+  BEGIN
+    WHILE gp > 0 DO BEGIN
+      CRTable.GetNode(gp, gn);
+      IF (gn.typ = CRTable.chart) OR (gn.typ = CRTable.class)
+        THEN BEGIN gn.p2 := CRTable.contextTrans; CRTable.PutNode(gp, gn) END
+        ELSE IF (gn.typ = CRTable.opt) OR (gn.typ = CRTable.iter) THEN SetCtx(gn.p1)
+        ELSE IF gn.typ = CRTable.alt THEN BEGIN SetCtx(gn.p1); SetCtx(gn.p2) END;
+      gp := gn.next
+    END
+  END;
+
+PROCEDURE SetOption (s: STRING);
+  VAR
+    i: INTEGER;
+  BEGIN
+    FOR i := 1 TO Length(s) DO
+      BEGIN
+        s[i] := UpCase(s[i]);
+        IF s[i] IN ['A' .. 'Z'] THEN CRTable.ddt[s[i]] := TRUE;
+      END;
+  END;
+
+(*----------------------------------------------------------------------------*)
+
+CHARACTERS
+
+  letter   = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_".
+  digit    = "0123456789".
+  ctrl     = CHR(1) .. CHR(31).
+  tab      = CHR(9).
+  eol      = CHR(13).
+  lf       = CHR(10).
+  noQuote1 = ANY - '"' - ctrl.
+  noQuote2 = ANY - "'" - ctrl.
+
+IGNORE tab + eol + lf
+
+TOKENS
+
+  ident     = letter {letter | digit}.
+  string    = '"' {noQuote1} '"' | "'" {noQuote2} "'".
+  badstring = '"' {noQuote1} (eol | lf) | "'" {noQuote2} (eol | lf).
+  number    = digit {digit}.
+
+PRAGMAS
+
+  Options = "$" {letter | digit} .
+                (.CRS.GetName(CRS.nextPos, CRS.nextLen, s); SetOption(s);  .)
+
+COMMENTS FROM "(*" TO "*)" NESTED
+COMMENTS FROM "/*" TO "*/"
+
+PRODUCTIONS
+
+CR                             (. VAR
+                                    startedDFA, ok, undef, hasAttrs: BOOLEAN;
+                                    unknownSy,
+                                    eofSy, gR:       INTEGER;
+                                    gramLine, sp:    INTEGER;
+                                    name, gramName:  CRTable.Name;
+                                    sn:              CRTable.SymbolNode; .)
+=
+"COMPILER"
+                               (. gramLine := CRS.line;
+                                  eofSy := CRTable.NewSym(CRTable.t, 'EOF', 0);
+                                  CRTable.genScanner := TRUE; CRTable.ignoreCase := FALSE;
+                                  Sets.Clear(CRTable.ignored);
+                                  startedDFA := FALSE; .)
+Ident <gramName>
+[ "USES"                       (. CRTable.useDeclPos.beg := CRS.nextPos;
+                                  CRTable.hasUses := TRUE .)
+  ident { "," ident }          (. CRTable.useDeclPos.len := CRS.nextPos - CRTable.useDeclPos.beg;
+                                  CRTable.useDeclPos.col := 0 .)
+  ";" ]                        (. CRTable.semDeclPos.beg := CRS.nextPos .)
+{ ANY }                        (. CRTable.semDeclPos.len := CRS.nextPos - CRTable.semDeclPos.beg;
+                                  CRTable.semDeclPos.col := 0 .)
+{ Declaration<startedDFA> }
+SYNC
+"PRODUCTIONS"                  (. ok := Successful;
+                                  IF ok AND CRTable.genScanner THEN CRA.MakeDeterministic(ok);
+                                  IF NOT ok THEN SemError(127);
+                                  CRTable.nNodes := 0 .)
+{ Ident <name>                 (. sp := CRTable.FindSym(name); undef := sp = CRTable.noSym;
+                                  IF undef
+                                    THEN BEGIN
+                                        sp := CRTable.NewSym(CRTable.nt, name, CRS.line);
+                                        CRTable.GetSym(sp, sn)
+                                      END
+                                    ELSE BEGIN
+                                      CRTable.GetSym(sp, sn);
+                                      IF sn.typ = CRTable.nt
+                                        THEN
+                                          BEGIN IF sn.struct > 0 THEN SemError(107) END
+                                        ELSE SemError(108);
+                                      sn.line := CRS.line
+                                    END;
+                                  hasAttrs := sn.attrPos.beg >= 0 .)
+  ( Attribs <sn.attrPos>       (. IF NOT undef AND NOT hasAttrs THEN SemError(105);
+                                  CRTable.PutSym(sp, sn) .)
+  |                            (. IF NOT undef AND hasAttrs THEN SemError(105) .)
+  )
+  [ SemText <sn.semPos>]
+  WEAK "="
+  Expression <sn.struct, gR>   (. CRTable.CompleteGraph(gR); CRTable.PutSym(sp, sn) .)
+  WEAK "."
+  }
+  "END" Ident <name>           (. sp := CRTable.FindSym(gramName);
+                                  IF sp = CRTable.noSym THEN SemError(111)
+                                  ELSE BEGIN
+                                    CRTable.GetSym(sp, sn);
+                                    IF sn.attrPos.beg >= 0 THEN SemError(112);
+                                    CRTable.root := CRTable.NewNode(CRTable.nt, sp, gramLine);
+                                  END;
+                                  IF name <> gramName THEN SemError(117)  .)
+"."                            (. unknownSy := CRTable.NewSym(CRTable.t, 'not', 0) .)
+
+.
+
+(*----------------------------------------------------------------------------*)
+
+Declaration<VAR startedDFA: BOOLEAN>
+                               (. VAR
+                                    gL1, gR1, gL2, gR2: INTEGER;
+                                    nested:             BOOLEAN; .)
+= (
+      "CHARACTERS" { SetDecl }
+    | "TOKENS"  { TokenDecl <CRTable.t> }
+    | "NAMES"   { NameDecl }
+    | "PRAGMAS" { TokenDecl <CRTable.pr> }
+    | "COMMENTS"
+      "FROM" TokenExpr <gL1, gR1>
+      "TO" TokenExpr <gL2, gR2>
+      ( "NESTED"               (. nested := TRUE .)
+        |                      (. nested := FALSE .)
+      )
+                               (. CRA.NewComment(gL1, gL2, nested) .)
+    | "IGNORE"
+    ( "CASE"                   (. IF startedDFA THEN SemError(130);
+                                  CRTable.ignoreCase := TRUE .)
+    | Set <CRTable.ignored>    (. IF Sets.IsIn(CRTable.ignored, 0) THEN SemError(119) .)
+    )
+  )                            (. startedDFA := TRUE .)
+.
+
+
+(*----------------------------------------------------------------------------*)
+
+SetDecl                        (. VAR
+                                    c:    INTEGER;
+                                    oneSet:  CRTable.CRTSet;
+                                    name: CRTable.Name; .)
+= Ident <name>                 (. c := CRTable.ClassWithName(name);
+                                  IF c >= 0 THEN SemError(107) .)
+  "=" Set <oneSet>             (. IF Sets.Empty(oneSet) THEN SemError(101);
+                                  c := CRTable.NewClass(name, oneSet) .)
+  ".".
+
+(*----------------------------------------------------------------------------*)
+
+Set <VAR oneSet: CRTable.CRTSet>
+                               (. VAR
+                                    set2: CRTable.CRTSet; .)
+= SimSet <oneSet>
+  { "+" SimSet <set2>          (. Sets.Unite(oneSet, set2) .)
+  | "-" SimSet <set2>          (. Sets.Differ(oneSet, set2) .)
+  }.
+
+(*----------------------------------------------------------------------*)
+
+SimSet <VAR oneSet: CRTable.CRTSet>
+                               (. VAR
+                                    i, n1, n2: INTEGER;
+                                    name:      CRTable.Name;
+                                    s:         STRING; .)
+=                              (. Sets.Clear(oneSet) .)
+  (   Ident <name>             (. i := CRTable.ClassWithName(name);
+                                  IF i < 0
+                                    THEN SemError(115)
+                                    ELSE CRTable.GetClass(i, oneSet)  .)
+    | string                   (. CRS.GetName(CRS.pos, CRS.len, s);
+                                  i := 2;
+                                  WHILE s[i] <> s[1] DO BEGIN
+                                    IF CRTable.ignoreCase THEN s[i] := UpCase(s[i]);
+                                    Sets.Incl(oneSet, ORD(s[i])); INC(i)
+                                  END .)
+    | SingleChar <n1>          (. Sets.Incl(oneSet, n1) .)
+      [ ".." SingleChar <n2>   (. FOR i := n1 TO n2 DO Sets.Incl(oneSet, i) .)
+                            ]
+    | "ANY"                    (. FOR i := 0 TO 255 DO Sets.Incl(oneSet, i) .)
+  ) .
+
+(*----------------------------------------------------------------------------*)
+
+SingleChar <VAR n: INTEGER>    (. VAR
+                                    i: INTEGER;
+                                    s: STRING; .)
+  =
+    "CHR" "("
+    (   number                 (. CRS.GetName(CRS.pos, CRS.len, s);
+                                  Val(s, n, i);
+                                  IF n > 255 THEN BEGIN SemError(118); n := n MOD 256 END;
+                                  IF CRTable.ignoreCase THEN n := ORD(UpCase(CHR(n))) .)
+      | string                 (. CRS.GetName(CRS.pos, CRS.len, s);
+                                  IF CRS.len <> 3 THEN SemError(118);
+                                  IF CRTable.ignoreCase THEN s[2] := UpCase(s[2]);
+                                  n := ORD(s[2]); .)
+    )
+    ")" .
+
+(*----------------------------------------------------------------------------*)
+
+TokenDecl <typ: INTEGER>       (. VAR
+                                    kind:       INTEGER;
+                                    name:       CRTable.Name;
+                                    pos:        CRTable.Position;
+                                    sp, gL, gR: INTEGER;
+                                    sn:         CRTable.SymbolNode; .)
+= Symbol <name, kind>          (. IF CRTable.FindSym(name) <> CRTable.noSym
+                                    THEN SemError(107)
+                                    ELSE BEGIN
+                                      sp := CRTable.NewSym(typ, name, CRS.line);
+                                      CRTable.GetSym(sp, sn); sn.struct := CRTable.classToken;
+                                      CRTable.PutSym(sp, sn)
+                                    END .)
+  SYNC
+  ( "="
+    TokenExpr <gL, gR>         (. IF kind <> ident THEN SemError(113);
+                                  CRTable.CompleteGraph(gR);
+                                  CRA.ConvertToStates(gL, sp) .)
+    "."
+  |                            (. IF kind = ident
+                                    THEN CRTable.genScanner := FALSE
+                                    ELSE MatchLiteral(sp)  .)
+  )
+  [ SemText <pos>              (. IF typ = CRTable.t THEN SemError(114);
+                                  CRTable.GetSym(sp, sn); sn.semPos := pos;
+                                  CRTable.PutSym(sp, sn) .)
+  ].
+
+(*----------------------------------------------------------------------------*)
+
+Expression <VAR gL, gR: INTEGER>
+                               (. VAR
+                                    gL2, gR2: INTEGER;
+                                    first:    BOOLEAN; .)
+= Term <gL, gR>                (. first := TRUE .)
+  { WEAK "|"
+    Term <gL2, gR2>            (. IF first THEN BEGIN
+                                    CRTable.MakeFirstAlt(gL, gR); first := FALSE
+                                  END;
+                                  CRTable.ConcatAlt(gL, gR, gL2, gR2) .)
+  }
+.
+
+(*----------------------------------------------------------------------------*)
+
+Term<VAR gL, gR: INTEGER>      (. VAR
+                                    gL2, gR2: INTEGER; .)
+=                              (. gL := 0; gR := 0 .)
+( Factor <gL, gR>
+    { Factor <gL2, gR2>        (. CRTable.ConcatSeq(gL, gR, gL2, gR2) .)
+    }
+  |                            (. gL := CRTable.NewNode(CRTable.eps, 0, 0); gR := gL .)
+  ).
+
+(*----------------------------------------------------------------------------*)
+
+Factor <VAR gL, gR: INTEGER>   (. VAR
+                                    sp, kind:    INTEGER;
+                                    name:        CRTable.Name;
+                                    gn:          CRTable.GraphNode;
+                                    sn:          CRTable.SymbolNode;
+                                    oneSet:      CRTable.CRTSet;
+                                    undef, weak: BOOLEAN;
+                                    pos:         CRTable.Position; .)
+=                              (. gL :=0; gR := 0; weak := FALSE .)
+( [ "WEAK"                     (. weak := TRUE .)
+  ]
+  Symbol <name, kind>          (. sp := CRTable.FindSym(name); undef := sp = CRTable.noSym;
+                                  IF undef THEN
+                                    IF kind = ident
+                                      THEN  (* forward nt *)
+                                        sp := CRTable.NewSym(CRTable.nt, name, 0)
+                                      ELSE IF CRTable.genScanner THEN
+                                        BEGIN
+                                          sp := CRTable.NewSym(CRTable.t, name, CRS.line);
+                                          MatchLiteral(sp)
+                                        END
+                                      ELSE BEGIN (* undefined string in production *)
+                                        SemError(106); sp := 0
+                                      END;
+                                  CRTable.GetSym(sp, sn);
+                                  IF (sn.typ <> CRTable.t) AND (sn.typ <> CRTable.nt) THEN SemError(104);
+                                  IF weak THEN
+                                    IF sn.typ = CRTable.t
+                                      THEN sn.typ := CRTable.wt
+                                      ELSE SemError(123);
+                                  gL := CRTable.NewNode(sn.typ, sp, CRS.line); gR := gL .)
+  ( Attribs <pos>              (. CRTable.GetNode(gL, gn); gn.pos := pos;
+                                  CRTable.PutNode(gL, gn);
+                                  CRTable.GetSym(sp, sn);
+                                  IF sn.typ <> CRTable.nt THEN SemError(103);
+                                  IF undef THEN
+                                    BEGIN sn.attrPos := pos; CRTable.PutSym(sp, sn) END
+                                    ELSE IF sn.attrPos.beg < 0 THEN SemError(105) .)
+  |                            (. CRTable.GetSym(sp, sn);
+                                  IF sn.attrPos.beg >= 0 THEN SemError(105) .)
+  )
+| "(" Expression <gL, gR> ")"
+| "[" Expression <gL, gR> "]"  (. CRTable.MakeOption(gL, gR) .)
+| "{" Expression <gL, gR> "}"  (. CRTable.MakeIteration(gL, gR) .)
+
+| SemText <pos>                (. gL := CRTable.NewNode(CRTable.sem, 0, 0); gR := gL;
+                                  CRTable.GetNode(gL, gn);
+                                  gn.pos := pos;
+                                  CRTable.PutNode(gL, gn) .)
+| "ANY"                        (. Sets.Fill(oneSet); Sets.Excl(oneSet, CRTable.eofSy);
+                                  gL := CRTable.NewNode(CRTable.any, CRTable.NewSet(oneSet), 0); gR := gL .)
+| "SYNC"                       (. gL := CRTable.NewNode(CRTable.sync, 0, 0); gR := gL .)
+).
+
+(*----------------------------------------------------------------------------*)
+
+TokenExpr <VAR gL, gR: INTEGER>
+                               (. VAR
+                                    gL2, gR2: INTEGER;
+                                    first:    BOOLEAN; .)
+= TokenTerm <gL, gR>           (. first := TRUE .)
+  { WEAK "|"
+    TokenTerm <gL2, gR2>       (. IF first THEN BEGIN
+                                    CRTable.MakeFirstAlt(gL, gR); first := FALSE
+                                  END;
+                                  CRTable.ConcatAlt(gL, gR, gL2, gR2) .)
+  }.
+
+(*----------------------------------------------------------------------------*)
+
+TokenTerm <VAR gL, gR: INTEGER>
+                               (. VAR
+                                    gL2, gR2: INTEGER; .)
+= TokenFactor <gL, gR>
+  { TokenFactor <gL2, gR2>     (. CRTable.ConcatSeq(gL, gR, gL2, gR2) .)
+  }
+  [ "CONTEXT"
+    "(" TokenExpr <gL2, gR2>   (. SetCtx(gL2); CRTable.ConcatSeq(gL, gR, gL2, gR2) .)
+    ")"
+  ].
+
+(*----------------------------------------------------------------------------*)
+
+TokenFactor <VAR gL, gR: INTEGER>
+                               (. VAR
+                                    kind, c: INTEGER;
+                                    oneSet:  CRTable.CRTSet;
+                                    name:    CRTable.Name; .)
+=                              (. gL :=0; gR := 0 .)
+( Symbol <name, kind>          (. IF kind = ident
+                                    THEN
+                                      BEGIN
+                                        c := CRTable.ClassWithName(name);
+                                        IF c < 0 THEN BEGIN
+                                          SemError(115);
+                                          Sets.Clear(oneSet); c := CRTable.NewClass(name, oneSet)
+                                        END;
+                                        gL := CRTable.NewNode(CRTable.class, c, 0); gR := gL
+                                      END
+                                    ELSE (* string *)
+                                      CRTable.StrToGraph(name, gL, gR)  .)
+| "(" TokenExpr <gL, gR> ")"
+| "[" TokenExpr <gL, gR> "]"   (. CRTable.MakeOption(gL, gR) .)
+| "{" TokenExpr <gL, gR> "}"   (. CRTable.MakeIteration(gL, gR) .)
+).
+
+(*----------------------------------------------------------------------------*)
+
+Ident <VAR name: CRTable.Name> (. VAR
+                                    str: STRING; .)
+  = ident                      (. CRS.GetName(CRS.pos, CRS.len, str);
+                                  name := str .).
+
+(*----------------------------------------------------------------------------*)
+
+Symbol <VAR name: CRTable.Name; VAR kind: INTEGER>
+                               (. VAR
+                                    myName: STRING; .)
+  =
+  ( Ident <name>               (. kind := ident .)
+  | string                     (. CRS.GetName(CRS.pos, CRS.len, myName);
+                                  kind := stringSym;
+                                  FixString(myName, CRS.len);
+                                  name := myName .)
+  ).
+
+(*----------------------------------------------------------------------------*)
+
+Attribs <VAR attrPos: CRTable.Position> =
+    "<"                        (. attrPos.beg := CRS.pos + 1; attrPos.col := CRS.col + 1 .)
+    { ANY | badstring          (. SemError(102) .)
+    }
+    ">"                        (. attrPos.len := (CRS.pos - attrPos.beg) .)
+  |
+    "<."                       (. attrPos.beg := CRS.pos + 2; attrPos.col := CRS.col + 2 .)
+    { ANY | badstring          (. SemError(102) .)
+    }
+    ".>"                       (. attrPos.len := (CRS.pos - attrPos.beg) .).
+
+(*----------------------------------------------------------------------------*)
+
+SemText <VAR semPos: CRTable.Position> =
+  "(."                         (. semPos.beg := CRS.pos + 2; semPos.col := CRS.col + 2 .)
+  {   ANY
+    | badstring                (. SemError(102) .)
+    | "(."                     (. SemError(109) .)
+  }
+  ".)"                         (. semPos.len := (CRS.pos - semPos.beg) .).
+
+
+(*----------------------------------------------------------------------------*)
+
+NameDecl                       (. VAR
+                                    name: CRTable.Name;
+                                    str: STRING; .)
+  = Ident <name> "="
+    ( ident                    (. CRS.GetName(CRS.pos, CRS.len, str) .)
+      | string                 (. CRS.GetName(CRS.pos, CRS.len, str);
+                                  FixString(str, CRS.len) .)
+       )                       (. CRTable.NewName(name, str) .)
+  ".".
+
+(*----------------------------------------------------------------------------*)
+
+END CR.

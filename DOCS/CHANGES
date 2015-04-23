@@ -1,0 +1,239 @@
+History of early modifications to Coco/R
+========================================
+
+               (Pat Terry, updated Monday  15 June 1992)
+
+I have attempted (successfully, I hope) to port Coco/R from the original JPI
+TopSpeed implementation as I received it, with files dated 27 January 1991, to
+other MS-DOS compilers, in a way that retains the greatest portability of
+source code.
+
+To help others who may receive variations on MS-DOS implementations of
+Coco/R from other sources, what follows is a summary of what was required
+(a) to achieve portability and (b) to effect other improvements.
+
+
+Overview of modifications
+=========================
+
+The system comprises various modules
+
+    CR -  main driving module
+    CRA - Automaton and scanner Generation
+    CRL - Listing
+    CRP - Parser
+    CRS - Scanner
+    CRT - Symbol table and Top-Down Graph
+    CRX - Parser generator
+    Sets - Large set handler
+
+    String - Interface to string handling routines
+
+    FileIO - File handling.
+
+Of these, the first group were first all modified (as little as possible) so
+that they compiled under each of the following Modula-2 compilers
+
+  FST   Fitted System Tools version 2 (Shareware)
+  LOG   Logitech 3.03
+  JPI   Jensen and Partners Topspeed 1.17  2.06  and 3.01
+  STO   StonyBrook "QuickMod" 2.2 (I do not have their "professional"
+        version, but I suspect it compiles satisfactorily there too).
+
+The only slight complication is that the FORWARD declarations in CRP.MOD are
+not needed in any of the other compilers.  This can be handled with the $M
+directive of Coco/R, and is not a problem.
+
+A later modification has eliminated CRL, incorporating the list handling into
+the main module, and added CRC - a module to allow the generation of a comlete
+driver program with error and list handling features, derived from another
+frame file.
+
+Module "String" provided a group of string handling primitives; the
+implementation interfaced these to the JPI Str module.  On the other compilers
+the interface was easily altered to the highly pseudo-standard "Strings" module
+found on all three.  In the end the system was changed so that "String" was
+eliminated in favour of using Strings, and the interface to Str from within JPI
+was easily handled by using the core module they provided.  (An equivalent is
+provided with the kit).
+
+FileIO is the only module that is now compiler specific.  I extended its
+definition over what was originally supplied, in particular exporting the File
+type opaquely, and providing a "FileIO.con" variable to handle interactive
+I/O.  This meant that the numerous imports from JPI's IO and FIO modules into
+the other modules could all be eliminated, and CR.MOD could be simplified.
+
+FileIO for the JPI version has to import from FIO and from IO.  For the other
+three implementations it imports from the (almost standardized) FileSystem and
+Terminal modules.  FileIO now provides other facilities that are compiler
+specific, yet all relate to I/O - for example, getting the date, time, and
+elapsed time printed out, retrieving command line parameters, searching for
+files using environment variables to specify paths, and altering the
+extensions of file names.
+
+
+Portability issues
+==================
+
+Portability was militated against by the following limitations of the
+compilers used:
+
+(a)  Logitech does not provide LONGCARD or SIZE as pervasives.  Fortunately
+     Logitech provides LONGINT and all compilers provide SYSTEM.TSIZE, so the
+     differences were easily overcome by eliminating the use of LONGCARD in
+     the few places where it was used, and using TSIZE everywhere.  This last
+     is unfortunate; the code now imports from SYSTEM when really it is not
+     using low-level and non-portable features of SYSTEM.
+
+(b)  The different compilers differ in the way in which they allow LONGINT
+     constants to be used.  Fortunately all allow VAL(LONGINT, x) as a way
+     around the problem.
+
+(c)  The JPI implementation was attempting to use a tuned expression to
+     retrieve a source character from the linked list of buffers into which
+     the source grammar was stored.  Simplifying this to a more portable
+     simple expression and exporting an extra procedure from CRS was easy, and
+     did not seem to affect the performance of the JPI implementation to any
+     marked extent (the major time seems to be spent in writing the generated
+     files, rather than in scanning the input).
+
+(d)  CRS and CRA used HIGH(s) to determine the length of a string passed as a
+     parameter.  This does not work on all compilers; the use of
+     Strings.Length(s) overcomes the problem.  Since Strings.Length(s) returns
+     a CARDINAL rather than an INTEGER value, there were a few places where
+     variables had to change from INTEGER to CARDINAL type.
+
+(e)  JPI is far more lax about type compatibility rules than the other
+     compilers.  The use of VAL(type, value) was needed in several places to
+     overcome the problems.
+
+(f)  The FST compiler is buggy in its treatment of CASE statements.  In
+     particular, constructs like
+
+          CASE x OF END (* totally empty *)
+
+     and
+
+          CASE x OF
+          | 1 : (* first option has a | before the label *)
+
+     are not accepted.  Fixing the first of these necessitated changes to
+     PARSER.FRM and SCANNER.FRM and to the parser and scanner generators to
+     bypass production of empty case statements; fixing the second was
+     trivially easy.
+
+(g)  The FST, LOG and STO compilers do not permit FORWARD declarations.
+     This required reordering of some procedures
+
+          CRT.MovePragmas and CRT.PrintSetTerm
+      and CRA.PrintStates
+
+
+Improvements
+============
+
+It was hard to resist the temptation to make a few improvements to the
+system:
+
+(a)  As now implemented it is possible to provide an initial set of directives
+     as the second command line parameter, for example
+
+                     COCOR   CR.ATG   /NMC
+
+     This easy change means that one need not edit the grammar quite so often!
+
+(b)  The layout of the code suplied, and of the code produced, was improved.
+     In particular, very long lines are a problem to some compilers. Various
+     alterations were made; for example to CRA.PutRange, so that lines do not
+     become too long, and to CRX.PutSet (which was particularly troublesome
+     when the $C directive was in effect).
+
+(c)  The extensions to FileIO to provide timing primitives allowed a
+     modification to CR.MOD to report on the performance of the system.
+
+(d)  Definition module generation may now be suppressed.  It is tedious to have
+     to remake the entire generated system every time a minor change is made to
+     the grammar (the generated definition modules are usually unaffected by
+     such changes).
+
+(e)  The handling of "restrictions" (which formerly simply printed a number
+     and halted), and the other places where the program halted from compiler
+     errors have now been channelled through an improved CRT.Restriction
+     procedure.
+
+(f)  Code that did not appear in the original Oberon implementation, which was
+     supposed to handle the generation of extra indenting spaces, was found
+     not to work, and was removed.  Similarly, an extension to the grammar of
+     Coco/R itself (to handle a "SemAlter" non-terminal) was deleted, as tests
+     showed it to be buggy, and superfluous to requirements.
+
+(g)  Between the original Oberon and the original JPI implementation, someone
+     had added the ability to generated named symbols (controlled by the $C
+     pragma), and to give user chosen names to these (defined by the NAMES
+     declaration).  These were retained, and improved.
+
+(h)  The original systems were cutting corners in their handling of characters
+     > 177C, and were not handling the IGNORE CASE directive.  This has now
+     been corrected, albeit at the slight expense of efficiency.
+
+(i)  An extension was made to the Coco/R grammar to allow character sets to be
+     specified with "range" declarations like
+
+           IGNORE CHR(0) .. CHR(31) + CHR(128) .. CHR(255)
+
+(j)  Experience with the use of Coco/R with naive undergraduate classes in 1992
+     convinced me that it would be useful to extend the system to generate a
+     driver program, as well as the scanner and parser, thus effectively
+     allowing the generation of a complete parser program, complete with list
+     handling and error reporting facilities.  The use of this feature is
+     optional.  It requires the presence of a COMPILER.FRM file, which is less
+     "generic" than the SCANNER.FRM and PARSER.FRM files, although for the
+     simplest application of parsing it can be made generic enough.  COCOR.EXE
+     becomes only marginally larger with this feature added.
+
+(k)  There are doubtless bugs that remain.  I would appreciate hearing about
+     these (and so would Professor Moessenboeck; some of the bugs I uncovered
+     were still in the later Oberon implementations).
+
+
+Performance
+============
+
+The following timings may be of interest.  The results are for Coco/R to
+reproduce CRP and CRS, and were produced just before the system reached version
+1.20:
+
+Compiler MakeTime Size Checks     Parse    Eval   List   Write   Total
+----------------------------------------------------------------------
+
+JPI 1.17  1'55"  86K    Yes        5.8      1.7   5.6    13.5    27.8
+                 71K    No         4.7      1.0   5.0    12.2    24.2
+
+JPI 2.06  5'34"  98K    Yes        6.6      1.4   5.6    13.4    28.2
+                 72K    No         4.4      0.7   4.3    10.2    20.8
+
+JPI 3.01  7'09"  91K    No         5.0      1.0   5.0    14.4    26.7
+
+FST 2.0b  2'11"  152K   Yes        6.8      1.4  19.3    25.0    54.8
+                 145K   No         6.4      1.2  19.2    24.7    53.8
+
+STO 2.2   0'54"  119K   Yes        8.8      2.2  14.4    23.6    51.3
+                  92K   No         4.3      1.0  11.9    17.7    36.5
+
+LOG 3.03  5'14"  124K   Yes        6.9      1.3   9.8    15.8    35.3
+                 103K   No         6.2      1.0   9.4    15.2    33.1
+
+The fastest overall at execution is TopSpeed version 2, release 1.06.
+However, JPI 1.17 is streets ahead on compile/make time, and almost as fast
+at execution time.  It is also clear that there is little in compile/make
+time between FST and JPI 1.17.  I have noticed this often before, yet my
+students all claim that they find JPI faster!  Where FST falls down is in
+its treatment of I/O, which is very slow.  A little work on their library
+should make a big difference.  The newer releases of TopSpeed are very slow
+for development work, and they don't produce significantly faster code.
+StonyBrook's QuickMod is consistently twice as fast as the best of the
+others on compile times in my experience (here and elsewhere).
+
+Timings were done on an (awfully slow) 8MHz AT.
+
+=END=

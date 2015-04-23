@@ -1,0 +1,87 @@
+COMPILER XRef
+USES CrossRef;
+(* Taste cross reference generator *)
+
+CONST
+  applied = FALSE;
+  defined = TRUE;
+VAR
+  Name : STRING;
+
+(*------------------------------------------------------------------------*)
+
+CHARACTERS
+  letter = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz" .
+  digit  = "0123456789" .
+  cr     = CHR(13) .
+  lf     = CHR(10) .
+  tab    = CHR(9) .
+
+TOKENS
+  ident  = letter {letter | digit} .
+  number = digit {digit} .
+
+IGNORE cr + lf + tab
+
+COMMENTS FROM "(*" TO "*)" NESTED
+
+PRODUCTIONS
+
+  XRef =                          (. Create(Table) .)
+   "PROGRAM" Ident                (. Add(Table, Name, XRefS.line, defined) .)
+    ";" Body Ident                (. Add(Table, Name, XRefS.line, applied) .)
+    "." .
+
+  Body
+  =
+    { "VAR"
+      { Ident ":"                 (. Add(Table, Name, XRefS.line, defined) .)
+        TypeId ";" }
+
+    | "PROCEDURE" Ident           (. Add(Table, Name, XRefS.line, defined) .)
+      ";" Body
+      Ident                       (. Add(Table, Name, XRefS.line, applied) .)
+      ";"
+    }
+    "BEGIN" StatSeq "END" .
+
+  TypeId =  "INTEGER"             (. Add(Table, 'INTEGER', XRefS.line, applied) .)
+           | "BOOLEAN"            (. Add(Table, 'BOOLEAN', XRefS.line, applied) .).
+
+  Ident = ident                   (.XRefS.GetName(XRefS.pos, XRefS.len, Name) .) .
+
+  StatSeq = Stat {";" Stat} .
+
+  Stat
+  = [ Ident                       (. Add(Table, Name, XRefS.line, applied) .)
+      ( ":=" Expression | )
+    | "IF" Expression
+      "THEN" StatSeq
+      [ "ELSE" StatSeq ]
+      "END"
+    | "WHILE" Expression
+      "DO" StatSeq "END"
+    | "READ" Ident                (. Add(Table, Name, XRefS.line, applied) .)
+    | "WRITE" Expression
+    ] .
+
+  Expression = SimExpr [ RelOp SimExpr ] .
+
+  SimExpr = Term { AddOp Term } .
+
+  Term = Factor { MulOp Factor } .
+
+  Factor
+      = ( Ident                   (. Add(Table, Name, XRefS.line, applied) .)
+          | "TRUE"                (. Add(Table, 'TRUE', XRefS.line, applied) .)
+          | "FALSE"               (. Add(Table, 'FALSE', XRefS.line, applied) .)
+          | number | "-" Factor
+        ) .
+
+  MulOp = "*" | "/" .
+
+  AddOp =  "+" | "-" .
+
+  RelOp = "=" | "<" | ">"  .
+
+END XRef.

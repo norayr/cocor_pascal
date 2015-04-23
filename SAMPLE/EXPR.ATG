@@ -1,0 +1,40 @@
+COMPILER Expr
+
+  PROCEDURE GetNumber (VAR Int : INTEGER);
+  (* Convert latest token to integer value Int *)
+    VAR
+      Error : INTEGER;
+      S : STRING;
+    BEGIN
+      ExprS.GetString(ExprS.pos, ExprS.len, S);
+      Int := 0;
+      Val(S, Int, Error);
+    END;
+
+CHARACTERS
+  digit =  "0123456789" .
+
+TOKENS
+  num = digit {digit} .
+
+PRODUCTIONS
+  Expr                              (. VAR r: INTEGER; .)
+    = Expression <r> "="            (. WriteLn(r); .) .
+
+  Expression <VAR e: INTEGER>       (. VAR t: INTEGER; .)
+    = Term <e>
+      {  '+' Term <t>               (. e := e + t .)
+      |  '-' Term <t>               (. e := e - t .)
+      }.
+
+  Term <VAR t: INTEGER>             (. VAR f: INTEGER; .)
+    = Factor <t>
+      {  '*' Factor <f>             (. t := t * f .)
+      |  '/' Factor <f>             (. t := t DIV f .)
+      }.
+
+  Factor <VAR f: INTEGER> =
+         num                        (. GetNumber(f) .)
+    | '(' Expression <f> ')'.
+
+END Expr.

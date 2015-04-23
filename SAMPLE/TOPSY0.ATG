@@ -1,0 +1,96 @@
+COMPILER Topsy
+(* Topsy++ level 1 grammar - no procedures, functions, parameters
+   Grammar only - no code generation or constraint analysis
+   See "Compilers and Compiler generators - an introduction with C++"
+   ISBN 1-85032-298-8, International Thomson Computer Press
+   P.D. Terry, Rhodes University, 1996 *)
+
+PRAGMAS
+  DebugOn    = "$D+" .
+
+CHARACTERS
+  cr         = CHR(13) .
+  lf         = CHR(10) .
+  letter     = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz" .
+  digit      = "0123456789" .
+  graphic    = ANY - '"' - "'" - "\" - cr - lf - CHR(0) .
+
+IGNORE CHR(9) .. CHR(13)
+COMMENTS FROM "//" TO lf
+COMMENTS FROM "/*" TO "*/"
+
+TOKENS
+  identifier = letter { letter | digit | "_" } .
+  number     = digit { digit } .
+  string     = '"' { graphic | "\" graphic | "\'" | "\\" | '\"' } '"' .
+  character  = "'" ( graphic | "\" graphic | "\'" | "\\" | '\"' ) "'" .
+
+PRODUCTIONS
+  Topsy = "void" "main" "(" "void" ")" Block .
+
+  Block = "{" { Declaration | Statement } "}" .
+
+  Declaration = ConstDeclaration | VarDeclarations .
+
+  Statement
+  =    Block           | Assignment
+     | IfStatement     | WhileStatement
+     | ForStatement    | RepeatStatement
+     | ReadStatement   | WriteStatement
+     | ReturnStatement | EmptyStatement .
+
+  ConstDeclaration
+  =  "const" identifier "=" ( number | character | "true" | "false" ) ";" .
+
+  VarDeclarations = ( "int" | "bool" | "char" ) OneVar { "," OneVar } ";" .
+
+  OneVar = identifier [ ArraySize | "=" Expression ] .
+
+  ArraySize = "[" number "]" .
+
+  Assignment = Variable ( "=" Expression | "++" | "--" ) ";" .
+
+  Variable = Designator .
+
+  Designator = identifier [ "[" Expression "]" ] .
+
+  IfStatement = "if" "(" Condition ")" Statement [ "else" Statement ] .
+
+  WhileStatement = "while" "(" Condition ")" Statement .
+
+  RepeatStatement = "do" { Statement } "until" "(" Condition ")" ";" .
+
+  Condition = Expression .
+
+  ForStatement
+  =  "for" "(" identifier "=" Expression ";" Condition [ ";" Epilogue ] ")"
+     Statement .
+
+  Epilogue = identifier ( "=" Expression | "++" | "--" ) .
+
+  ReadStatement = "cin" ">>" Variable { ">>" Variable } ";" .
+
+  WriteStatement = "cout" "<<" WriteElement { "<<" WriteElement } ";" .
+
+  WriteElement = string | Expression .
+
+  ReturnStatement = "return" ";" .
+
+  EmptyStatement = ";" .
+
+  Expression = SimpleExpr [ RelOp SimpleExpr ] .
+
+  SimpleExpr = ( "+" Term | "-" Term | Term ) { AddOp Term } .
+
+  Term = Factor { MulOp Factor } .
+
+  Factor =   Designator | number | character | "true" | "false"
+           | "!" Factor | "(" Expression ")" .
+
+  AddOp = "+" | "-" | "||" .
+
+  MulOp = "*" | "/" | "%" | "&&" .
+
+  RelOp = "==" | "!=" | "<" | "<=" | ">" | ">=" .
+
+END Topsy.

@@ -1,0 +1,27 @@
+COMPILER Spreadsheet
+(* Grammar for a very simple spreadsheet *)
+
+IGNORE CHR(9) .. CHR(13)
+IGNORE CASE
+
+COMMENTS FROM "(*" TO "*)"
+
+CHARACTERS
+  letter     = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz" .
+  digit      = "0123456789" .
+
+TOKENS
+  identifier = letter .
+  number     = digit { digit} .
+
+PRODUCTIONS
+  Spreadsheet = { Command } "QUIT" .
+  Command     = [ Expression ]
+                ("UP" | "DOWN" | "LEFT" | "RIGHT" | "HOME" | "GOTO" Cell |
+                "ENTER" ) .
+  Expression  = [ "+" | "-" ] Term { "+" Term | "-" Term } .
+  Term        = Factor { "*" Factor | "/" Factor | "%" Factor } .
+  Factor      = number | Cell | "(" Expression ")" .
+  Cell        = identifier number .
+
+END Spreadsheet.

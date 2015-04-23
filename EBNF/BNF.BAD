@@ -1,0 +1,17 @@
+(* example of incorrect set of productions *)
+
+   EBNF = { Production } .
+
+   Production = nonterminal "=" Expression "."  .
+
+   Expression = Term { "|" Term  .  (*  missing closing } *)
+
+   Term = Factor { %%% Factor } .   (* includes invalid characters *)
+
+   Factor =
+          nonterminal
+          | terminal
+          | "[" Expression "]"
+          | "(" Expression ")" )    (* has spurious closing ) *)
+          | "{" Expression "}" .
+
