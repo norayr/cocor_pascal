@@ -1,0 +1,391 @@
+$C
+COMPILER Modula2ISO
+USES Prettier;
+(* Simple Modula-2 pretty printer *)
+
+PROCEDURE WriteToken;
+  VAR
+    Token : STRING;
+  BEGIN
+    Modula2ISOS.GetString(Modula2ISOS.pos, Modula2ISOS.len, Token);
+    Append(Token);
+  END;
+
+(*--------------------------------------------------------------------------*)
+
+CHARACTERS
+  eol      = CHR(13) .
+  letter   = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz" .
+  octDigit = "01234567" .
+  digit    = octDigit + "89" .
+  hexDigit = digit + "ABCDEF" .
+  noQuote1 = ANY - "'" - eol .
+  noQuote2 = ANY - '"' - eol .
+
+IGNORE  CHR(9) .. CHR(13)
+
+COMMENTS
+  FROM "(*" TO "*)" NESTED
+
+TOKENS
+  identifier = letter { letter | digit } .
+  integer    =   digit { digit }
+               | digit { digit }  CONTEXT ("..")
+               | octDigit { octDigit } ("B" | "C")
+               | digit { hexDigit } "H" .
+  real       =  digit { digit } "." { digit }
+                [ "E" [ "+" | "-" ] digit { digit } ] .
+  string     =    "'" { noQuote1 } "'"
+                | '"' { noQuote2 } '"' .
+
+PRODUCTIONS
+  Modula2ISO   =   DefMod
+                 | [ "IMPLEMENTATION"  (. Append('IMPLEMENTATION ') .)
+                   ] ProgMod .
+
+  DefMod       =  "DEFINITION"
+                  "MODULE"             (. Append('DEFINITION MODULE ') .)
+                  Ident ";"            (. Append(';'); IndentNextLine; BlankLine .)
+                  { Import }
+                  { Definition }
+                  "END"                (. Append('END ') .)
+                  Ident "."            (. Append('.'); NewLine .) .
+
+  ProgMod      =  "MODULE"             (. Append('MODULE ') .)
+                  Ident
+                  [ Priority ] ";"     (. Append(';'); IndentNextLine; BlankLine .)
+                  { Import }
+                  ModBlock Ident "."   (. Append('.'); NewLine .) .
+
+  ModBlock    =   { Declaration }
+                  [ ModuleBody ]
+                  "END"                (. Append('END ') .) .
+
+  ModuleBody  =   InitialPart
+                  [ FinalPart ] .
+
+  InitialPart =   "BEGIN"              (. Append('BEGIN'); IndentNextLine .)
+                  BlockBody            (. ExdentNextLine .) .
+
+  FinalPart   =   "FINALLY"            (. Append('FINALLY'); IndentNextLine .)
+                  BlockBody            (. ExdentNextLine .) .
+
+  BlockBody   =   StatSeq
+                  [ "EXCEPT"           (. Append('EXCEPT'); IndentNextLine .)
+                  StatSeq              (. ExdentNextLine .)
+                  ] .
+
+  Priority     =  "["                  (. Append(' [') .)
+                  ConstExpr "]"        (. Append(']') .) .
+
+  Import       =    "FROM"             (. Append('FROM ') .)
+                    Ident "IMPORT"     (. Append(' IMPORT '); IndentNextLine .)
+                    IdList ";"         (. Append(';'); ExdentNextLine; BlankLine .)
+                  | "IMPORT"           (. Append('IMPORT ') .)
+                    IdList ";"         (. Append(';'); BlankLine .) .
+
+  Export       =  "EXPORT"             (. Append('EXPORT ') .)
+                  [ "QUALIFIED"        (. Append('QUALIFIED ') .)
+                  ] IdList ";"         (. Append(';'); BlankLine .) .
+
+  Definition   =    "CONST"            (. Append('CONST'); IndentNextLine .)
+                    { ConstDecl ";"    (. Append(';'); NewLine .)
+                    SYNC }             (. ExdentNextLine; BlankLine .)
+                  | "TYPE"             (. Append('TYPE'); IndentNextLine .)
+                    { Ident [ "="      (. Append(' = ') .)
+                    Type ] ";"         (. Append(';'); NewLine .)
+                    SYNC }             (. ExdentNextLine; BlankLine .)
+                  | "VAR"              (. Append('VAR'); IndentNextLine .)
+                    { VarDecl ";"      (. Append(';'); NewLine .)
+                    SYNC }             (. ExdentNextLine; BlankLine .)
+                  | ProcHead ";" SYNC  (. Append(';'); NewLine; BlankLine .) .
+
+  Declaration  =    "CONST"            (. Append('CONST'); IndentNextLine .)
+                    { ConstDecl ";"    (. Append(';'); NewLine .)
+                    SYNC }             (. ExdentNextLine; BlankLine .)
+                  | "TYPE"             (. Append('TYPE'); IndentNextLine .)
+                    { TypeDecl ";"     (. Append(';'); NewLine .)
+                    SYNC }             (. ExdentNextLine; BlankLine .)
+                  | "VAR"              (. Append('VAR'); IndentNextLine .)
+                    { VarDecl ";"      (. Append(';'); NewLine .)
+                    SYNC }             (. ExdentNextLine; BlankLine .)
+                  | ProcDecl ";" SYNC  (. Append(';'); ExdentNextLine; BlankLine .)
+                  | ModDecl ";" SYNC   (. Append(';'); ExdentNextLine; BlankLine .) .
+
+  ConstDecl    =  Ident "="            (. Append(' = ') .)
+                  ConstExpr .
+
+  ConstExpr    =  Expression .
+
+  TypeDecl     =  Ident "="            (. Append(' = ') .)
+                  Type .
+
+  Type         =    SimpleType | ArrayType
+                  | RecordType | SetType
+                  | PointerType | ProcType .
+
+  SimpleType   =    QualId
+                    [ "["              (. Append(' [') .)
+                    ConstExpr ".."     (. Append(' .. ') .)
+                    ConstExpr "]"      (. Append('] ') .)
+                    ]
+                  | Enumeration
+                  | "["                (. Append('[') .)
+                    ConstExpr ".."     (. Append(' .. ') .)
+                    ConstExpr "]"      (. Append(']') .) .
+
+  Enumeration  =  "("                  (. Append('(') .)
+                  IdList ')'           (. Append(') ') .) .
+
+  ArrayType    =  "ARRAY"              (. Append('ARRAY ') .)
+                  SimpleType { ","     (. Append(', ') .)
+                  SimpleType } "OF"    (. Append(' OF ') .)
+                  Type .
+
+  RecordType   =  "RECORD"             (. IndentNextLine; Append('RECORD'); IndentNextLine .)
+                  FieldListSeq         (. ExdentNextLine .)
+                  "END"                (. Exdent; Append('END') .) .
+
+  FieldListSeq =  FieldList { ";"      (. Append(';'); NewLine .)
+                  FieldList } .
+
+  FieldList    =  [  IdList ":"        (. Append(' : ') .)
+                     Type
+                   | "CASE"            (. Append('CASE ') .)
+                     [ Ident ] ":"     (. Append(' : ') .)
+                     QualId "OF"       (. Append(' OF '); IndentNextLine .)
+                     Variant { "|"     (. Append('|') .)
+                     Variant }
+                     [ "ELSE"          (. Append('ELSE'); IndentNextLine .)
+                     FieldListSeq      (. Exdent .)
+                     ] "END"           (. ExdentNextLine; Append('END') .)
+                  ] .
+
+  Variant      =  [                    (. Append(' ') .)
+                  CaseLabList ":"      (. Append(' : '); IndentNextLine .)
+                  FieldListSeq         (. ExdentNextLine .)
+                  ] .
+
+  CaseLabList  =  CaseLabels { ","     (. Append(', ') .)
+                  CaseLabels } .
+
+  CaseLabels   =  ConstExpr [ ".."     (. Append(' .. ') .)
+                  ConstExpr ] .
+
+  SetType      =  (   "SET"            (. Append('SET') .)
+                    | "PACKEDSET"      (. Append('PACKEDSET') .)
+                  ) "OF"               (. Append(' OF ') .)
+                  SimpleType .
+
+  PointerType  =  "POINTER" "TO"       (. Append('POINTER TO ') .)
+                  Type .
+
+  ProcType     =  "PROCEDURE"          (. Append('PROCEDURE ') .)
+                  [ FormTypeList ] .
+
+  FormTypeList =  "("                  (. Append(' (') .)
+                  [ [ "VAR"            (. Append('VAR ') .)
+                    ] FormalType
+                    { ","              (. Append(', ') .)
+                    [ "VAR"            (. Append('VAR ') .)
+                    ] FormalType }
+                  ]
+                  ")"                  (. Append(')') .)
+                  [ ":"                (. Append(' : ') .)
+                  QualId ] .
+
+  VarDecl      =  IdList ":"           (. Append(' : ') .)
+                  Type .
+
+  ProcDecl     =  ProcHead ";"         (. Append(';') .)
+                  (                    (. IndentNextLine .)
+                    ProcBlock Ident
+                  | "FORWARD"          (. Append(' FORWARD'); Indent .)
+                  ) .
+
+  ProcHead     =  "PROCEDURE"          (. Append('PROCEDURE ') .)
+                  Ident [ FormalParams ] .
+
+  FormalParams =  "("                  (. Append(' (') .)
+                  [ FormalGroup { ";"  (. Append('; ') .)
+                  FormalGroup } ] ")"  (. Append(')') .)
+                  [ ":"                (. Append(' : ') .)
+                  QualId ] .
+
+  FormalGroup =  [ "VAR"               (. Append('VAR ') .)
+                  ] IdList ":"         (. Append(' : ') .)
+                  FormalType .
+
+  FormalType  =  [ "ARRAY" "OF"        (. Append('ARRAY OF ') .)
+                  ] QualId .
+
+  ProcBlock    =  { Declaration }
+                  [ InitialPart ]
+                  "END"                (. Append('END ') .) .
+
+  ModDecl      =  "MODULE"             (. Append('MODULE ') .)
+                  Ident
+                  [ Priority ] ";"     (. Append(';'); IndentNextLine .)
+                  { Import }
+                  [ Export ]
+                  ModBlock Ident .
+
+  StatSeq      =  Statement { WEAK ";" (. Append(';'); NewLine .)
+                  Statement } .
+
+  Statement    =  SYNC [
+                    Designator
+                    (   ":="           (. Append(' := ') .)
+                        Expression
+                      | [ ActualParams ]
+                    )
+                  | IfStat | CaseStat
+                  | LoopStat | ForStat
+                  | RepeatStat | WhileStat
+                  | WithStat
+                  | "EXIT"             (. Append('EXIT') .)
+                  | "RETRY"            (. Append('RETRY') .)
+                  | "RETURN"           (. Append('RETURN') .)
+                    [                  (. Append(' ') .)
+                    Expression ] ] .
+
+  WithStat     =  "WITH"               (. Append('WITH ') .)
+                  Designator "DO"      (. Append(' DO'); IndentNextLine .)
+                  StatSeq "END"        (. ExdentNextLine; Append('END') .) .
+
+  LoopStat     =  "LOOP"               (. Append('LOOP'); IndentNextLine .)
+                  StatSeq
+                  "END"                (. ExdentNextLine; Append('END') .) .
+
+  ForStat      =  "FOR"                (. Append('FOR ') .)
+                  Ident ":="           (. Append(' := ') .)
+                  Expression "TO"      (. Append(' TO ') .)
+                  Expression [ "BY"    (. Append(' BY ') .)
+                  ConstExpr ] "DO"     (. Append(' DO'); IndentNextLine .)
+                  StatSeq "END"        (. ExdentNextLine; Append('END') .) .
+
+  RepeatStat   =  "REPEAT"             (. Append('REPEAT'); IndentNextLine .)
+                  StatSeq
+                  "UNTIL"              (. ExdentNextLine; Append('UNTIL ') .)
+                  Expression .
+
+  WhileStat    =  "WHILE"              (. Append('WHILE ') .)
+                  Expression "DO"      (. Append(' DO'); IndentNextLine .)
+                  StatSeq "END"        (. ExdentNextLine; Append('END') .) .
+
+  CaseStat     =  "CASE"               (. Append('CASE ') .)
+                  Expression "OF"      (. Append(' OF'); IndentNextLine .)
+                  OneCase { "|"        (. Append('| ') .)
+                  OneCase }
+                  [ "ELSE"             (. Append('ELSE '); Indent (* NewLine *) .)
+                  StatSeq              (. Exdent .)
+                  ] "END"              (. ExdentNextLine; Append('END') .) .
+
+  OneCase      =  [ CaseLabList
+                  ":"                  (. Append(' : '); Indent (* NewLine *) .)
+                  StatSeq              (. ExdentNextLine .)
+                  ] .
+
+(* Alternative
+  IfStat       =  "IF"                 (. Append('IF ') .)
+                  Expression "THEN"    (. IndentNextLine; Append('THEN '); Indent .)
+                  StatSeq              (. Exdent .)
+                  { "ELSIF"            (. NewLine; Append('ELSIF ') .)
+                  Expression "THEN"    (. Append(' THEN '); Indent .)
+                  StatSeq              (. Exdent .)
+                  }
+                  [ "ELSE"             (. NewLine; Append('ELSE '); Indent .)
+                     StatSeq              (. Exdent .)
+                  ] "END"              (. ExdentNextLine; Append('END') .) .
+*)
+
+  IfStat       =  "IF"                 (. Append('IF ') .)
+                  Expression "THEN"    (. IndentNextLine; Append('THEN'); IndentNextLine .)
+                  StatSeq              (. Exdent .)
+                  { "ELSIF"            (. NewLine; Append('ELSIF ') .)
+                  Expression "THEN"    (. Append(' THEN'); IndentNextLine .)
+                  StatSeq              (. Exdent .)
+                  }
+                  [ "ELSE"             (. NewLine; Append('ELSE'); IndentNextLine .)
+                    StatSeq            (. Exdent .)
+                  ] "END"              (. ExdentNextLine; Append('END') .) .
+
+  Expression   =  SimExpr [ RelOp SimExpr SYNC ] .
+
+  SimExpr      =  SYNC [ "+"           (. Append(' + ') .)
+                        | "-"          (. Append(' - ') .)
+                  ] Term { AddOp Term } .
+
+  Term         =  Factor { MulOp Factor } .
+
+  Factor       =  SYNC (
+                    integer            (. WriteToken .)
+                  | real               (. WriteToken .)
+                  | string             (. WriteToken .)
+                  | SetRest
+                  | Ident
+                    { SetRest
+                      | "["            (. Append('[') .)
+                        ExpList "]"    (. Append(']') .)
+                      | "^"            (. Append('^') .)
+                      | "."            (. Append('.') .)
+                        Ident
+                    } [ ActualParams ]
+                  | "("                (. Append('(') .)
+                    Expression ")"     (. Append(')') .)
+                  | ( "NOT"            (. Append('NOT ') .)
+                      | "~"            (. Append('~ ') .)
+                    ) Factor
+                  ) .
+
+  ActualParams =  "("                  (. Append('(') .)
+                  [ ExpList ] ")"      (. Append(')') .) .
+
+  SetRest      =  "{"                  (. Append('{') .)
+                  [ Element { ","      (. Append(', ') .)
+                  Element } ] "}"      (. Append('}') .) .
+
+  Element      =  ConstExpr
+                  [ ".."               (. Append(' .. ') .)
+                  ConstExpr ] .
+
+  MulOp        =    "*"                (. Append(' * ') .)
+                  | "/"                (. Append(' * ') .)
+                  | "DIV"              (. Append(' DIV ') .)
+                  | "REM"              (. Append(' REM ') .)
+                  | "MOD"              (. Append(' MOD ') .)
+                  | "AND"              (. Append(' AND ') .)
+                  | "&"                (. Append(' & ') .) .
+
+  AddOp        =    "+"                (. Append(' + ') .)
+                  | "-"                (. Append(' - ') .)
+                  | "OR"               (. Append(' OR ') .) .
+
+  RelOp        =    "="                (. Append(' = ') .)
+                  | "#"                (. Append(' # ') .)
+                  | "<>"               (. Append(' <> ') .)
+                  | "<"                (. Append(' < ') .)
+                  | "<="               (. Append(' <= ') .)
+                  | ">"                (. Append(' > ') .)
+                  | ">="               (. Append(' >= ') .)
+                  | "IN"               (. Append(' IN ') .) .
+
+  Designator   =  Ident { "["          (. Append('[') .)
+                      ExpList "]"      (. Append(']') .)
+                    | "^"              (. Append('^') .)
+                    | "."              (. Append('.') .)
+                      Ident } .
+
+  IdList       =  Ident { ","          (. Append(', ') .)
+                  Ident } .
+
+  ExpList      =  Expression { ","     (. Append(', ') .)
+                  Expression } .
+
+  QualId       =  Ident { "."          (. Append('.') .)
+                  Ident } .
+
+  Ident        = identifier            (. WriteToken .) .
+
+END Modula2ISO.
+
