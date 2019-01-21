@@ -1,4 +1,4 @@
 
 
 all:
-	fpc -Mtp CR.PAS
+	fpc -Mtp CR.pas
